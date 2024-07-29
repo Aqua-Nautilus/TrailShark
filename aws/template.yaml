@@ -1,0 +1,164 @@
+Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        !Sub
+          - 'trail-shark-${RandomGUID}'
+          - { RandomGUID: !Select [0, !Split ["-", !Select [2, !Split ["/", !Ref AWS::StackId ]]]] }
+
+  S3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3Bucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AWSCloudTrailWrite
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action:
+              - s3:GetBucketAcl
+              - s3:PutObject
+            Resource:
+              - !Sub '${S3Bucket.Arn}'
+              - !Sub '${S3Bucket.Arn}/*'
+
+  Trail:
+    Type: "AWS::CloudTrail::Trail"
+    Properties:
+      S3BucketName: !Ref S3Bucket
+      IsLogging: true
+      IsMultiRegionTrail: true
+      IncludeGlobalServiceEvents: true
+      EnableLogFileValidation: true
+      TrailName: !Sub
+          - 'trail-shark-${RandomGUID}'
+          - { RandomGUID: !Select [0, !Split ["-", !Select [2, !Split ["/", !Ref AWS::StackId ]]]] }
+      CloudWatchLogsLogGroupArn: !GetAtt
+        - CloudTrailLogGroup
+        - Arn
+      CloudWatchLogsRoleArn: !GetAtt
+        - CloudTrailRole
+        - Arn
+      EventSelectors:
+        - DataResources:
+            - Type: "AWS::S3::Object"
+              Values:
+                - "arn:aws:s3"
+          IncludeManagementEvents: true
+          ReadWriteType: "All"
+
+  CloudTrailLogGroup:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      LogGroupName: !Sub "${AWS::StackName}-CloudTrailLogGroup"
+      RetentionInDays: 1
+
+  CloudTrailRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "cloudtrail.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: "CloudTrail_CloudWatchLogs_Policy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${AWS::StackName}-CloudTrailLogGroup:*"
+
+  SSMParameterBucketName:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+      Name: "/trail-shark/bucket/name"
+      Type: "String"
+      Value: !Ref S3Bucket
+
+  SSMParameterBucketArn:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+      Name: "/trail-shark/bucket/arn"
+      Type: "String"
+      Value: !GetAtt S3Bucket.Arn
+
+  SSMParameterTrailName:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+      Name: "/trail-shark/trail/name"
+      Type: "String"
+      Value: !Ref Trail
+
+  SSMParameterTrailArn:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+      Name: "/trail-shark/trail/arn"
+      Type: "String"
+      Value: !GetAtt Trail.Arn
+
+  SSMParameterLogGroupName:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+      Name: "/trail-shark/loggroup/name"
+      Type: "String"
+      Value: !Ref CloudTrailLogGroup
+
+  SSMParameterLogGroupArn:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+      Name: "/trail-shark/loggroup/arn"
+      Type: "String"
+      Value: !GetAtt CloudTrailLogGroup.Arn
+
+  TrailSharkRecorderPolicy:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "EC2DescribeRegions"
+            Effect: "Allow"
+            Action:
+              - "ec2:DescribeRegions"
+            Resource: "*"
+          - Sid: "CloudWatchLogsAccess"
+            Effect: "Allow"
+            Action:
+              - "logs:GetLogEvents"
+              - "logs:DescribeLogStreams"
+            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${AWS::StackName}-CloudTrailLogGroup:*"
+          - Sid: "S3Access"
+            Effect: "Allow"
+            Action:
+              - "s3:GetObject"
+            Resource:
+              - !Sub '${S3Bucket.Arn}'
+              - !Sub '${S3Bucket.Arn}/*'
+          - Sid: "SSMAccess"
+            Effect: "Allow"
+            Action:
+              - "ssm:GetParameter"
+            Resource:
+              - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/trail-shark/*'
+          - Sid: "StartStopLogging"
+            Effect: "Allow"
+            Action:
+              - "cloudtrail:StartLogging"
+              - "cloudtrail:StopLogging"
+            Resource: !GetAtt Trail.Arn
+          - Sid: "ListBuckets"
+            Effect: "Allow"
+            Action:
+              - "s3:ListBucket"
+              - "s3:ListAllMyBuckets"
+            Resource: "*"
+          

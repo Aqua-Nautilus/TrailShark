@@ -1,0 +1,7 @@
+gui.column.format:
+	"Time", "%t",
+	"Source", "%Cus:cloudtrail.sourceIPAddress:0:R",
+	"Event Name", "%Cus:cloudtrail.eventName:0:R",
+	"Region", "%Cus:cloudtrail.awsRegion:0:R",
+	"Destination", "%Cus:cloudtrail.eventSource:0:R",
+	"User Agent", "%Cus:cloudtrail.userAgent:0:R"
