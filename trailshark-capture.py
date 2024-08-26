@@ -60,7 +60,7 @@ class ConfigArg:
 
 def show_config():
     args: List[ConfigArg] = [
-        ConfigArg(call='--profile', display='Profile AWS credentials', type='string', default='default'),
+        ConfigArg(call='--profile', display='Profile AWS credentials', type='string', default=DEFAULT_PROFILE),
         ConfigArg(call='--region', display='AWS region (Where you deployed trailshark)', type='string', default=DEFAULT_REGION),
         ConfigArg(call='--method', display='Log pulling method (s3 or cloudwatch)', type='string', default=DEFAULT_METHOD),
         ConfigArg(call='--interval', display='Interval between log pulling', type='integer', default=DEFAULT_INTERVAL),
@@ -115,10 +115,10 @@ def main():
     parser.add_argument('--fifo', help='Use together with capture to provide the fifo to dump data to')
 
     # custom arguments
-    parser.add_argument('--profile',default='default', type=str)
-    parser.add_argument('--region',default='eu-south-1', type=str)
-    parser.add_argument('--method',default='cloudwatch', type=str)
-    parser.add_argument('--interval',default=30, type=int)
+    parser.add_argument('--profile',default=DEFAULT_PROFILE, type=str)
+    parser.add_argument('--region',default=DEFAULT_REGION, type=str)
+    parser.add_argument('--method',default=DEFAULT_METHOD, type=str)
+    parser.add_argument('--interval',default=DEFAULT_INTERVAL, type=int)
 
     args = parser.parse_args()
 
